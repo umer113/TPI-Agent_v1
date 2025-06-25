@@ -604,7 +604,13 @@ def main():
         st.markdown(f'<div class="user-message">👤 {user_msg["content"]}</div>', unsafe_allow_html=True)
         
         if assistant_msg:
-            st.markdown(f'<div class="assistant-message"> {assistant_msg["content"]}</div>', unsafe_allow_html=True)
+            styled_content = assistant_msg["content"].replace(
+                "### ", "<h3 style='color:white;'>"
+            ).replace(
+                "\n", "</h3>\n", 1  # optional: closes only the first header
+            )
+            
+            st.markdown(f'<div class="assistant-message">{styled_content}</div>', unsafe_allow_html=True)
             docx_buffer = create_docx(assistant_msg["content"])
             st.download_button(
                 label="Save Article Draft",
