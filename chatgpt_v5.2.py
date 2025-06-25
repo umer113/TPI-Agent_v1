@@ -453,8 +453,22 @@ def main():
         max-width: 80%;
         background-color: #1F2937;
       }
+      .assistant-message h1,
+      .assistant-message h2,
+      .assistant-message h3,
+      .assistant-message h4,
+      .assistant-message h5,
+      .assistant-message h6 {
+        color: #FFFFFF !important;
+        margin-top: 0.8rem;
+        margin-bottom: 0.4rem;
+      }
+      .assistant-message ul {
+        margin-left: 1.5rem;
+      }
     </style>
     """, unsafe_allow_html=True)
+
 
     st.title("🕸️ TPI Overwatch AI")
 
