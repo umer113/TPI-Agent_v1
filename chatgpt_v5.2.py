@@ -293,24 +293,31 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         "Use the provided CSV dataset when relevant, referencing specific rows or columns to support your answers — but you're not restricted to it. "
         "Always consider the full conversation history to give context-aware, coherent, and smart responses. "
         "If information is missing, admit it honestly. Stay conversational but concise.\n\n"
+    
         "Format and content focus based on user request:\n"
+    
         "- **If the user requests an article** (e.g., includes 'article' in the question):\n"
         "  Structure the response with markdown formatting as follows:\n"
         "  ### Introduction\n"
         "  - Brief overview of the topic or context.\n"
         "  ### Main Points\n"
-        "  - Use sub-headings for each major point.\n"
-        "  - Provide concise details under each sub-heading.\n"
+        "  \n"
+        "  For each major point:\n"
+        "  #### [Subheading]\n"
+        "  - Provide concise details.\n"
         "  ### Conclusion\n"
         "  - Summarize or provide final thoughts.\n"
+    
         "- **If the user does not request an article**:\n"
         "  Use a conversational ChatGPT-like style with:\n"
         "  - One or two short paragraphs to introduce the topic or answer.\n"
         "  - Bullet points for key insights or details.\n"
         "  - A short concluding paragraph.\n"
+    
         "- **If the user requests a brief or precise response** (e.g., includes 'brief' or 'precise' in the question):\n"
         "  Focus the content strictly on key insights from the dataset, excluding broad overviews or extraneous details, while maintaining the above formatting rules."
     )
+
 
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
