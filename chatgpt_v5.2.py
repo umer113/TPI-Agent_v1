@@ -625,7 +625,10 @@ def main():
         st.markdown(f'<div class="user-message">👤 {user_msg["content"]}</div>', unsafe_allow_html=True)
         
         if assistant_msg:
-            st.markdown(f'<div class="assistant-message"> {assistant_msg["content"]}</div>', unsafe_allow_html=True)
+            with st.container():
+            st.markdown('<div class="assistant-message">', unsafe_allow_html=True)
+            st.markdown(assistant_msg["content"], unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
             docx_buffer = create_docx(assistant_msg["content"])
             st.download_button(
