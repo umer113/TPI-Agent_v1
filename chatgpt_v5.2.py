@@ -621,11 +621,11 @@ def main():
         else: 
             pairs.append((chat_history[i], None))
     for pair_idx, (user_msg, assistant_msg) in enumerate(reversed(pairs)):
-      
-        st.markdown(f'<div class="user-message">👤 {user_msg["content"]}</div>', unsafe_allow_html=True)
-        
-        if assistant_msg:
-            with st.container():
+
+    st.markdown(f'<div class="user-message">👤 {user_msg["content"]}</div>', unsafe_allow_html=True)
+
+    if assistant_msg:
+        with st.container():
             st.markdown('<div class="assistant-message">', unsafe_allow_html=True)
             st.markdown(assistant_msg["content"], unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
