@@ -438,20 +438,18 @@ def main():
     <style>
       .user-message {
         border: 1px solid #6B7280;
-        color: #F9FAFB;
+        color: #4B5563;
         padding: 0.75rem 1rem;
         border-radius: 0.375rem;
         margin: 0.5rem 0;
         max-width: 80%;
       }
       .assistant-message {
-        border: 1px solid #4B5563;
         color: #F9FAFB;
         padding: 0.75rem 1rem;
         border-radius: 0.375rem;
         margin: 0.5rem 0;
         max-width: 80%;
-        background-color: #1F2937;
       }
       .assistant-message h1,
       .assistant-message h2,
@@ -465,8 +463,8 @@ def main():
       }
       .assistant-message ul {
         margin-left: 1.5rem;
-      }
-    </style>
+      }
+    </style>
     """, unsafe_allow_html=True)
 
 
