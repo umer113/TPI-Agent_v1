@@ -463,8 +463,8 @@ def main():
       }
       .assistant-message ul {
         margin-left: 1.5rem;
-      }
-    </style>
+      }
+    </style>
     """, unsafe_allow_html=True)
 
 
