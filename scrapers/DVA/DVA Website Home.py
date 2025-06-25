@@ -1,25 +1,24 @@
-import time
-import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+import pandas as pd
 from urllib.parse import urljoin
-from webdriver_manager.chrome import ChromeDriverManager  # ✅ this is key
 
+CHROMIUM_PATH = "/usr/bin/chromium-browser"
+CHROMEDRIVER_PATH = "/usr/lib/chromium-browser/chromedriver"
 BASE_URL = "https://clik.dva.gov.au/"
 
-# ✅ Setup headless Chrome with WebDriver Manager
 options = Options()
+options.binary_location = CHROMIUM_PATH
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
-# ✅ Use webdriver-manager to auto-download chromedriver
-service = Service(ChromeDriverManager().install())
+service = Service(CHROMEDRIVER_PATH)
 driver = webdriver.Chrome(service=service, options=options)
 
 try:
