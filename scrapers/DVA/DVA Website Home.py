@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from urllib.parse import urljoin
 
-CHROMIUM_PATH = "/usr/bin/chromium-browser"
+CHROMIUM_PATH = "/usr/bin/chromium"
 CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
 BASE_URL = "https://clik.dva.gov.au/"
 
