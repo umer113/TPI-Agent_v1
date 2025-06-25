@@ -55,7 +55,7 @@ def get_html(url):
     Attempt to fetch `url` using each proxy in turn.
     Returns the `requests.Response` on success or None if all proxies fail.
     """
-    for proxy in proxies_list:
+    for proxy in proxies:
         try:
             resp = requests.get(
                 url,
