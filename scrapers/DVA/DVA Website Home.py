@@ -9,7 +9,7 @@ import pandas as pd
 from urllib.parse import urljoin
 
 CHROMIUM_PATH = "/usr/bin/chromium-browser"
-CHROMEDRIVER_PATH = "/usr/lib/chromium-browser/chromedriver"
+CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
 BASE_URL = "https://clik.dva.gov.au/"
 
 options = Options()
