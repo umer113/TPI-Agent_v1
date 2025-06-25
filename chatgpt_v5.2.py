@@ -282,38 +282,35 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     def count_tokens(text: str) -> int:
         return len(encoding.encode(text))
 
-    # system_prompt = (
-    #     "You are ChatGPT — a helpful, intelligent, and articulate AI assistant. "
-        # "Engage with the user naturally, just like ChatGPT does. You can answer questions, explain concepts, write summaries or articles, and offer insights or ideas. "
-        # "Use the provided CSV dataset when it’s relevant, referencing specific rows or columns to support your answers — but you're not restricted to it. "
-        # "Always consider the full conversation history to give context-aware, coherent, and smart responses. "
-    #     "Format your response in a clear, structured manner using bullet points for key insights, details, or lists when appropriate. "
-    #     "Structure your response as follows: "
-    #     "- **Introduction**: Provide a brief context or overview of the response. "
-    #     "- **Main Points**: Use bullet points to present key information, insights, or answers clearly and concisely. "
-    #     "- **Conclusion**: Summarize the response or provide a closing statement, if relevant. "
-    #     "Be clear, creative, and conversational. If information is missing or uncertain, say so honestly instead of guessing."
-    # )
-    system_prompt = """
-    You are ChatGPT, a helpful, intelligent, and articulate AI assistant.
+    # Determine if the user requested an article or a brief/precise response
+    is_article = "article" in question.lower()
+    is_brief_or_precise = any(keyword in question.lower() for keyword in ["brief", "precise"])
 
-    -- **Conversational Mode (default)** --
-    • For any general question (including “summarize this”), reply in plain paragraphs or simple bullets.  
-    • Do **not** prepend “Introduction” or append “Conclusion.”  
-    • Only use lists when they genuinely make the answer clearer.
-
-    -- **Article Mode (only when asked)** --
-    If and only if the user explicitly asks you to “write an article,” “create an article,” or similar, format your response like:
-    1. A clear **Title**
-    2. An opening paragraph
-    3. Titled sections with headings
-    4. A closing summary
-
-    Always pick **Conversational Mode** unless the user’s prompt contains the word “article” in the sense of “please write an article on…”.  
-    """
-
-
-
+    # System prompt with conditional formatting and content focus
+    system_prompt = (
+        "You are ChatGPT — a helpful, intelligent, and articulate AI assistant. "
+        "Engage with the user naturally, just like ChatGPT does. You can answer questions, explain concepts, write summaries or articles, and offer insights or ideas. "
+        "Use the provided CSV dataset when relevant, referencing specific rows or columns to support your answers — but you're not restricted to it. "
+        "Always consider the full conversation history to give context-aware, coherent, and smart responses. "
+        "If information is missing, admit it honestly. Stay conversational but concise.\n\n"
+        "Format and content focus based on user request:\n"
+        "- **If the user requests an article** (e.g., includes 'article' in the question):\n"
+        "  Structure the response with markdown formatting as follows:\n"
+        "  ### Introduction\n"
+        "  - Brief overview of the topic or context.\n"
+        "  ### Main Points\n"
+        "  - Use sub-headings for each major point.\n"
+        "  - Provide concise details under each sub-heading.\n"
+        "  ### Conclusion\n"
+        "  - Summarize or provide final thoughts.\n"
+        "- **If the user does not request an article**:\n"
+        "  Use a conversational ChatGPT-like style with:\n"
+        "  - One or two short paragraphs to introduce the topic or answer.\n"
+        "  - Bullet points for key insights or details.\n"
+        "  - A short concluding paragraph.\n"
+        "- **If the user requests a brief or precise response** (e.g., includes 'brief' or 'precise' in the question):\n"
+        "  Focus the content strictly on key insights from the dataset, excluding broad overviews or extraneous details, while maintaining the above formatting rules."
+    )
 
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
@@ -347,7 +344,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         def run_sync():
             client = Groq(api_key=os.getenv("GROQ_API_KEY"))
             resp = client.chat.completions.create(
-                model=groq_model,
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
@@ -387,27 +384,29 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         part = await (send_groq(prompt) if use_groq else send_chat(prompt))
         partials.append(part)
 
-    # synthesis = (
-    #     "Please combine the following partial responses into a single, well-structured answer to the user's question. "
-    #     "Ensure the response is formatted with bullet points for key insights or details, following this structure: "
-    #     "- **Introduction**: Brief context or overview. "
-    #     "- **Main Points**: Use bullet points for key information. "
-    #     "- **Conclusion**: Summarize or provide a closing statement, if relevant.\n\n"
-    #     + "\n---\n".join(partials)
-    # )
+    # Synthesis prompt with conditional formatting and content focus
     synthesis = (
-    "You are an AI assistant combining multiple responses into a **single well-formatted final answer**. "
-    "Follow this format strictly:\n\n"
-    "###**Introduction**\n"
-    "- Brief overview of the topic or question.\n\n"
-    "### **Main Points**\n"
-    "- Use bullet points.\n"
-    "- Each bullet should cover one clear insight.\n\n"
-    "### **Conclusion**\n"
-    "- A final summary or recommendation, if applicable.\n\n"
-    "Combine these partial responses:\n\n"
-    + "\n---\n".join(partials)
-)
+        "You are an AI assistant combining multiple responses into a single, well-formatted final answer. "
+        "Follow the format and content focus based on user request:\n\n"
+        "- **If the user requested an article** (e.g., 'article' in the question):\n"
+        "  ### Introduction\n"
+        "  - Brief overview of the topic or question.\n"
+        "  ### Main Points\n"
+        "  - Use sub-headings for each major point.\n"
+        "  - Provide concise details under each sub-heading.\n"
+        "  ### Conclusion\n"
+        "  - A final summary or recommendation.\n"
+        "- **If the user did not request an article**:\n"
+        "  - Start with one or two short paragraphs.\n"
+        "  - Use bullet points for key insights or details.\n"
+        "  - End with a short concluding paragraph.\n"
+        "- **If the user requested a brief or precise response** (e.g., 'brief' or 'precise' in the question):\n"
+        "  Focus the content strictly on key insights from the dataset, excluding broad overviews or extraneous details.\n\n"
+        f"The user {'requested an article' if is_article else 'did not request an article'} "
+        f"and {'requested a brief or precise response' if is_brief_or_precise else 'did not request a brief or precise response'}.\n"
+        "Combine these partial responses:\n\n"
+        + "\n---\n".join(partials)
+    )
 
     return await (send_groq(synthesis) if use_groq else send_chat(synthesis))
 
