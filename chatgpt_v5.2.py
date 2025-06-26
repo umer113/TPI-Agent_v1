@@ -283,19 +283,14 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         return len(encoding.encode(text))
 
     # 🎯 Enhanced ChatGPT-style behavior
-    system_prompt = (
-        "You are ChatGPT, a large language model trained by OpenAI. "
-        "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
-        "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
-        "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
-        "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
-        "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
-        f"End with a natural, varied follow-up question that fits the content. "
-        f"Examples: 'Would you like me to summarize another part?', 'Should I focus on a different event?', "
-        f"'Want a timeline or more background?', or 'Would you like a more emotional tone?'. "
-        f"Do NOT repeat the same question — make it feel like a real conversation."
-    )
-
+        system_prompt = (
+            "You are ChatGPT, a large language model trained by OpenAI. "
+            "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
+            "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
+            "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
+            "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
+            "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
+        )
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
         for m in chat_history
@@ -315,26 +310,26 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
 
     def make_prompt(csv_section: str) -> str:
         is_article = "article" in question.lower()
-
+    
         if is_article:
             return (
-                f"You are a professional writer and assistant. "
-                f"Write a compelling, vivid, and beautifully formatted markdown article using this dataset:\n\n"
+                f"You are a professional writer with deep storytelling skill. "
+                f"Write a beautifully written, markdown-formatted article using the dataset below.\n\n"
                 f"{csv_section}\n\n"
-                f"Prompt:\n{question}\n\n"
-                f"The article must start naturally — no robotic phrasing. "
-                f"Use markdown headings like ## Title, ### Background, and paragraphs. "
-                f"End with a thoughtful follow-up question like ChatGPT would."
+                f"User's prompt:\n{question}\n\n"
+                f"Use structured headings (##, ###), natural flow, and emotional depth. "
+                f"Do NOT say 'based on the data' — just start the article directly. "
+                f"After the article, end with a context-aware follow-up question like ChatGPT would. "
+                f"Use your own judgment based on what the user might want next — don't repeat or force it."
             )
-
+    
         return (
-            f"You have access to the following dataset:\n\n"
-            f"{csv_section}\n\n"
-            f"User asked:\n{question}\n\n"
-            f"Use the data where helpful and answer naturally like ChatGPT. "
-            f"Don’t use robotic or generic phrasing. "
-            f"Here’s the previous chat history for context:\n{history_context}\n\n"
-            f"End with a relevant follow-up question to continue the conversation."
+            f"You are ChatGPT. You are helpful, smart, and conversational. "
+            f"You are given this dataset:\n\n{csv_section}\n\n"
+            f"The user asked:\n{question}\n\n"
+            f"Use the data naturally in your response. Be thoughtful and concise. "
+            f"After answering, end with a follow-up question that feels natural based on the conversation so far. "
+            f"Use your own judgment to keep the chat going meaningfully."
         )
 
     async def send_chat(prompt: str) -> str:
