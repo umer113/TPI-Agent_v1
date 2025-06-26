@@ -290,7 +290,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
         "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
         "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
-        "End with a natural, varied follow-up question that fits the content. "
+        "End your response with a natural follow-up question that fits the topic — "
     )
 
     history_context = "".join(
