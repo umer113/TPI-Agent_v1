@@ -282,63 +282,43 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     def count_tokens(text: str) -> int:
         return len(encoding.encode(text))
 
-    # 🎯 Enhanced ChatGPT-style behavior
-    system_prompt = (
-        "You are ChatGPT, a large language model trained by OpenAI. "
-        "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
-        "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
-        "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
-        "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
-        "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
-        "End with a natural, varied follow-up question that fits the content. "
-    )
+    # decide if user really wanted an "article"
+    is_article = any(kw in question.lower() for kw in ("write an article", "write a comprehensive article", "article"))
 
-    history_context = "".join(
-        f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
-        for m in chat_history
-    )
+    # system prompt branches
+    if is_article:
+        system_prompt = (
+            "You are a professional writer and assistant. "
+            "Write a compelling, vivid, and beautifully formatted markdown article using the data provided. "
+            "Use headings (##, ###), paragraphs, and a natural tone. "
+            "Do not preface with 'Based on the dataset' or robotic phrasing."
+        )
+    else:
+        system_prompt = (
+            "You are ChatGPT, a helpful assistant. "
+            "Answer the user’s question directly and concisely, using the data if it’s relevant. "
+            "Be conversational and, if helpful, include simple formatting (lists, bold) but do NOT produce a full article. "
+            "End with a brief follow-up question."
+        )
 
+    # build the prompt
+    header = csv_text.split("\n", 1)[0]
+    body = csv_text[len(header) :].strip()
+    user_block = f"{header}\n{body}\n\nUser asked: {question}\n"
+
+    # check token limits
     MODEL_MAX = 16385
     HEADROOM = 512
-    usable_tokens = MODEL_MAX - HEADROOM
-
-    static_tokens = (
-        count_tokens(system_prompt)
-        + count_tokens("### Conversation History:\n")
-        + count_tokens(history_context)
-        + count_tokens("### User Question:\n")
-        + count_tokens(question)
-    )
-
-    def make_prompt(csv_section: str) -> str:
-        is_article = "article" in question.lower()
-
-        if is_article:
-            return (
-                f"You are a professional writer and assistant. "
-                f"Write a compelling, vivid, and beautifully formatted markdown article using this dataset:\n\n"
-                f"{csv_section}\n\n"
-                f"Prompt:\n{question}\n\n"
-                f"The article must start naturally — no robotic phrasing. "
-                f"Use markdown headings like ## Title, ### Background, and paragraphs. "
-            )
-
-        return (
-            f"You have access to the following dataset:\n\n"
-            f"{csv_section}\n\n"
-            f"User asked:\n{question}\n\n"
-            f"Use the data where helpful and answer naturally like ChatGPT. "
-            f"Don’t use robotic or generic phrasing. "
-            f"Here’s the previous chat history for context:\n{history_context}\n\n"
-        )
+    static_tokens = count_tokens(system_prompt) + count_tokens(user_block)
+    usable = MODEL_MAX - HEADROOM
 
     async def send_chat(prompt: str) -> str:
         client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         resp = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
+                {"role": "system",  "content": system_prompt},
+                {"role": "user",    "content": prompt},
             ]
         )
         return resp.choices[0].message.content.strip()
@@ -349,40 +329,31 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
             resp = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
+                    {"role": "system",  "content": system_prompt},
+                    {"role": "user",    "content": prompt},
                 ]
             )
             return resp.choices[0].message.content.strip()
         return await asyncio.to_thread(run_sync)
 
-    full_prompt = make_prompt(csv_text)
-    if static_tokens + count_tokens(full_prompt) <= usable_tokens:
-        return await (send_groq(full_prompt) if use_groq else send_chat(full_prompt))
+    # if it fits, just send it
+    if static_tokens <= usable:
+        return await (send_groq(user_block) if use_groq else send_chat(user_block))
 
-    # If input is too large, break the CSV into chunks
+    # otherwise chunk the CSV rows
     lines = csv_text.split("\n")
     header, rows = lines[0], lines[1:]
-    avg_tokens_per_row = max(1, count_tokens("\n".join(rows)) // len(rows))
-    rows_per_chunk = max(1, (usable_tokens - static_tokens) // avg_tokens_per_row)
+    avg = max(1, count_tokens("\n".join(rows)) // len(rows))
+    per_chunk = max(1, (usable - count_tokens(system_prompt)) // avg)
 
-    while True:
-        chunks = [rows[i:i+rows_per_chunk] for i in range(0, len(rows), rows_per_chunk)]
-        if all(
-            static_tokens + count_tokens(make_prompt(header + "\n" + "\n".join(chunk))) <= usable_tokens
-            for chunk in chunks
-        ):
-            break
-        rows_per_chunk = max(1, rows_per_chunk // 2)
-
-    partials = []
+    chunks = [rows[i : i+per_chunk] for i in range(0, len(rows), per_chunk)]
+    parts = []
     for chunk in chunks:
-        prompt = make_prompt(header + "\n" + "\n".join(chunk))
+        prompt = f"{header}\n" + "\n".join(chunk) + f"\n\nUser asked: {question}\n"
         part = await (send_groq(prompt) if use_groq else send_chat(prompt))
-        partials.append(part)
+        parts.append(part)
 
-    combined = "\n".join(partials)
-    return await (send_groq(combined) if use_groq else send_chat(combined))
+    return "\n\n".join(parts)
 
 
 
