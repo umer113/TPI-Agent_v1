@@ -282,42 +282,16 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     def count_tokens(text: str) -> int:
         return len(encoding.encode(text))
 
-    # Determine if the user requested an article or a brief/precise response
-    is_article = "article" in question.lower()
-    is_brief_or_precise = any(keyword in question.lower() for keyword in ["brief", "precise"])
-
-    # System prompt with conditional formatting and content focus
+    # 🎯 Enhanced ChatGPT-style behavior
     system_prompt = (
-        "You are ChatGPT — a helpful, intelligent, and articulate AI assistant. "
-        "Engage with the user naturally, just like ChatGPT does. You can answer questions, explain concepts, write summaries or articles, and offer insights or ideas. "
-        "Use the provided CSV dataset when relevant, referencing specific rows or columns to support your answers — but you're not restricted to it. "
-        "Always consider the full conversation history to give context-aware, coherent, and smart responses. "
-        "If information is missing, admit it honestly. Stay conversational but concise.\n\n"
-    
-        "Format and content focus based on user request:\n"
-    
-        "- **If the user requests an article** (e.g., includes 'article' in the question):\n"
-        "  Structure the response with markdown formatting as follows:\n"
-        "  ### Introduction\n"
-        "  - Brief overview of the topic or context.\n"
-        "  ### Main Points\n"
-        "  \n"
-        "  For each major point:\n"
-        "  #### [Subheading]\n"
-        "  - Provide concise details.\n"
-        "  ### Conclusion\n"
-        "  - Summarize or provide final thoughts.\n"
-    
-        "- **If the user does not request an article**:\n"
-        "  Use a conversational ChatGPT-like style with:\n"
-        "  - One or two short paragraphs to introduce the topic or answer.\n"
-        "  - Bullet points for key insights or details.\n"
-        "  - A short concluding paragraph.\n"
-    
-        "- **If the user requests a brief or precise response** (e.g., includes 'brief' or 'precise' in the question):\n"
-        "  Focus the content strictly on key insights from the dataset, excluding broad overviews or extraneous details, while maintaining the above formatting rules."
+        "You are ChatGPT, a large language model trained by OpenAI. "
+        "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
+        "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
+        "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
+        "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
+        "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
+        "End with a natural, varied follow-up question that fits the content. "
     )
-
 
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
@@ -335,6 +309,30 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         + count_tokens("### User Question:\n")
         + count_tokens(question)
     )
+
+    def make_prompt(csv_section: str) -> str:
+        is_article = "article" in question.lower()
+
+        if is_article:
+            return (
+                f"You are a professional writer and assistant. "
+                f"Write a compelling, vivid, and beautifully formatted markdown article using this dataset:\n\n"
+                f"{csv_section}\n\n"
+                f"Prompt:\n{question}\n\n"
+                f"The article must start naturally — no robotic phrasing. "
+                f"Use markdown headings like ## Title, ### Background, and paragraphs. "
+                f"End with a thoughtful follow-up question like ChatGPT would."
+            )
+
+        return (
+            f"You have access to the following dataset:\n\n"
+            f"{csv_section}\n\n"
+            f"User asked:\n{question}\n\n"
+            f"Use the data where helpful and answer naturally like ChatGPT. "
+            f"Don’t use robotic or generic phrasing. "
+            f"Here’s the previous chat history for context:\n{history_context}\n\n"
+            f"End with a relevant follow-up question to continue the conversation."
+        )
 
     async def send_chat(prompt: str) -> str:
         client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -360,17 +358,11 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
             return resp.choices[0].message.content.strip()
         return await asyncio.to_thread(run_sync)
 
-    def make_prompt(csv_section: str) -> str:
-        return (
-            f"### Conversation History:\n{history_context}"
-            f"### CSV Data:\n{csv_section}\n\n"
-            f"### User Question:\n{question}"
-        )
-
     full_prompt = make_prompt(csv_text)
     if static_tokens + count_tokens(full_prompt) <= usable_tokens:
         return await (send_groq(full_prompt) if use_groq else send_chat(full_prompt))
 
+    # If input is too large, break the CSV into chunks
     lines = csv_text.split("\n")
     header, rows = lines[0], lines[1:]
     avg_tokens_per_row = max(1, count_tokens("\n".join(rows)) // len(rows))
@@ -391,31 +383,8 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         part = await (send_groq(prompt) if use_groq else send_chat(prompt))
         partials.append(part)
 
-    # Synthesis prompt with conditional formatting and content focus
-    synthesis = (
-        "You are an AI assistant combining multiple responses into a single, well-formatted final answer. "
-        "Follow the format and content focus based on user request:\n\n"
-        "- **If the user requested an article** (e.g., 'article' in the question):\n"
-        "  ### Introduction\n"
-        "  - Brief overview of the topic or question.\n"
-        "  ### Main Points\n"
-        "  - Use sub-headings for each major point.\n"
-        "  - Provide concise details under each sub-heading.\n"
-        "  ### Conclusion\n"
-        "  - A final summary or recommendation.\n"
-        "- **If the user did not request an article**:\n"
-        "  - Start with one or two short paragraphs.\n"
-        "  - Use bullet points for key insights or details.\n"
-        "  - End with a short concluding paragraph.\n"
-        "- **If the user requested a brief or precise response** (e.g., 'brief' or 'precise' in the question):\n"
-        "  Focus the content strictly on key insights from the dataset, excluding broad overviews or extraneous details.\n\n"
-        f"The user {'requested an article' if is_article else 'did not request an article'} "
-        f"and {'requested a brief or precise response' if is_brief_or_precise else 'did not request a brief or precise response'}.\n"
-        "Combine these partial responses:\n\n"
-        + "\n---\n".join(partials)
-    )
-
-    return await (send_groq(synthesis) if use_groq else send_chat(synthesis))
+    combined = "\n".join(partials)
+    return await (send_groq(combined) if use_groq else send_chat(combined))
 
 
 
