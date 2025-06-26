@@ -309,9 +309,9 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     )
 
     def make_prompt(csv_section: str) -> str:
-        is_article = "article" in question.lower()
-    
         is_article = any(kw in question.lower() for kw in ["write an article", "create an article", "generate article", "full article", "detailed article"])
+    
+        if is_article:
             return (
                 f"You are a professional writer with deep storytelling skill. "
                 f"Write a beautifully written, markdown-formatted article using the dataset below.\n\n"
