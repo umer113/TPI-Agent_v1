@@ -284,12 +284,9 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
 
     # 🎯 Enhanced ChatGPT-style behavior
     system_prompt = (
-        "You are ChatGPT, a large language model trained by OpenAI. "
-        "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
-        "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
-        "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
-        "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
-        "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
+        "You are ChatGPT, a helpful, intelligent, and conversational assistant. "
+        "Always respond in a natural, human-like way. "
+        "Ask a meaningful, context-based follow-up at the end of each message like ChatGPT would."
     )
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
@@ -308,28 +305,31 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         + count_tokens(question)
     )
 
-    def make_prompt(csv_section: str) -> str:
-        is_article = any(kw in question.lower() for kw in ["write an article", "create an article", "generate article", "full article", "detailed article"])
+    def make_prompt(csv_section: str, question: str) -> str:
+        is_article = any(kw in question.lower() for kw in [
+            "write an article", "create an article", "generate article",
+            "full article", "article on", "make an article"
+        ])
     
         if is_article:
             return (
-                f"You are a professional writer with deep storytelling skill. "
-                f"Write a beautifully written, markdown-formatted article using the dataset below.\n\n"
+                f"You are a professional writer. Based on the following dataset, "
+                f"generate a beautifully written, markdown-formatted article. \n\n"
                 f"{csv_section}\n\n"
-                f"User's prompt:\n{question}\n\n"
-                f"Use structured headings (##, ###), natural flow, and emotional depth. "
-                f"Do NOT say 'based on the data' — just start the article directly. "
-                f"After the article, end with a context-aware follow-up question like ChatGPT would. "
-                f"Use your own judgment based on what the user might want next — don't repeat or force it."
+                f"User's request:\n{question}\n\n"
+                f"Use natural structure, headings (##), subheadings (###), and flow. "
+                f"Do NOT say 'based on the dataset' — just write the article directly. "
+                f"At the end, ask a follow-up question that feels natural and helpful for the topic. "
+                f"Use your own judgment like ChatGPT would."
             )
     
         return (
-            f"You are ChatGPT. You are helpful, smart, and conversational. "
-            f"You are given this dataset:\n\n{csv_section}\n\n"
+            f"You are ChatGPT, a helpful, smart assistant. "
+            f"You are given this data:\n\n{csv_section}\n\n"
             f"The user asked:\n{question}\n\n"
-            f"Use the data naturally in your response. Be thoughtful and concise. "
-            f"After answering, end with a follow-up question that feels natural based on the conversation so far. "
-            f"Use your own judgment to keep the chat going meaningfully."
+            f"Use the data naturally in your answer. "
+            f"Speak in a human, conversational tone — no bullet points unless asked. "
+            f"After answering, ask a context-aware follow-up question like ChatGPT would, to keep the chat going."
         )
 
     async def send_chat(prompt: str) -> str:
