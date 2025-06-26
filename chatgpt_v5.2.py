@@ -356,7 +356,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
             return resp.choices[0].message.content.strip()
         return await asyncio.to_thread(run_sync)
 
-    full_prompt = make_prompt(csv_text)
+    full_prompt = make_prompt(csv_text, question)
     if static_tokens + count_tokens(full_prompt) <= usable_tokens:
         return await (send_groq(full_prompt) if use_groq else send_chat(full_prompt))
 
@@ -369,7 +369,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     while True:
         chunks = [rows[i:i+rows_per_chunk] for i in range(0, len(rows), rows_per_chunk)]
         if all(
-            static_tokens + count_tokens(make_prompt(header + "\n" + "\n".join(chunk))) <= usable_tokens
+            static_tokens + count_tokens(make_prompt(header + "\n" + "\n".join(chunk), question)) <= usable_tokens
             for chunk in chunks
         ):
             break
@@ -377,7 +377,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
 
     partials = []
     for chunk in chunks:
-        prompt = make_prompt(header + "\n" + "\n".join(chunk))
+        prompt = make_prompt(header + "\n" + "\n".join(chunk), question)
         part = await (send_groq(prompt) if use_groq else send_chat(prompt))
         partials.append(part)
 
