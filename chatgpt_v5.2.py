@@ -292,7 +292,7 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         system_prompt = (
             "You are a professional writer. Produce a markdown article with:\n"
             "- **Introduction** label in bold, followed by its paragraph.\n"
-            "- One or more **Body** sections, each starting with a bold label (e.g. **Background**, **Analysis**, etc.)\n"
+            "- One or more sections, each starting with a bold label (e.g. **Background**, **Analysis**, etc.)\n"
             "- **Conclusion** label in bold, followed by its paragraph.\n"
             "At the very end, write exactly one follow-up question as plain text, e.g.:\n"
             "Would you like to modify or expand this article?\n"
