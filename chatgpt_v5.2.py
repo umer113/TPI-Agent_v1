@@ -282,33 +282,39 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     def count_tokens(text: str) -> int:
         return len(encoding.encode(text))
 
-    # decide if user really wanted an "article"
-    is_article = any(kw in question.lower() for kw in ("write an article", "write a comprehensive article", "article"))
+    # decide if user truly wants an article
+    is_article = any(kw in question.lower() for kw in (
+        "write an article", "write a comprehensive article", "article"
+    ))
 
-    # system prompt branches
+    # system prompts
     if is_article:
         system_prompt = (
             "You are a professional writer and assistant. "
-            "Write a compelling, vivid, and beautifully formatted markdown article using the data provided. "
-            "Use headings (##, ###), paragraphs, and a natural tone. "
-            "Do not preface with 'Based on the dataset' or robotic phrasing."
+            "Write a well-structured markdown article that includes:\n"
+            "1. An **Introduction** section with a heading `## Introduction`.\n"
+            "2. Multiple body sections under distinct `##` or `###` headings.\n"
+            "3. A **Conclusion** section with heading `## Conclusion`.\n"
+            "At the very end, include exactly one follow-up question—"
+            "for example, “Would you like to modify or expand this article?” "
+            "Do NOT add any other closing remarks or boilerplate."
         )
     else:
         system_prompt = (
             "You are ChatGPT, a helpful assistant. "
             "Answer the user’s question directly and concisely, using the data if it’s relevant. "
-            "Be conversational and, if helpful, include simple formatting (lists, bold) but do NOT produce a full article. "
+            "Be conversational, use simple formatting (lists, bold) if helpful, but do NOT produce a full article. "
             "End with a brief follow-up question."
         )
 
-    # build the prompt
+    # prepare the user block
     header = csv_text.split("\n", 1)[0]
-    body = csv_text[len(header) :].strip()
+    body   = csv_text[len(header):].strip()
     user_block = f"{header}\n{body}\n\nUser asked: {question}\n"
 
-    # check token limits
+    # token limit check
     MODEL_MAX = 16385
-    HEADROOM = 512
+    HEADROOM  = 512
     static_tokens = count_tokens(system_prompt) + count_tokens(user_block)
     usable = MODEL_MAX - HEADROOM
 
@@ -317,8 +323,8 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         resp = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system",  "content": system_prompt},
-                {"role": "user",    "content": prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": prompt},
             ]
         )
         return resp.choices[0].message.content.strip()
@@ -329,18 +335,18 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
             resp = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system",  "content": system_prompt},
-                    {"role": "user",    "content": prompt},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": prompt},
                 ]
             )
             return resp.choices[0].message.content.strip()
         return await asyncio.to_thread(run_sync)
 
-    # if it fits, just send it
+    # if it fits, send directly
     if static_tokens <= usable:
         return await (send_groq(user_block) if use_groq else send_chat(user_block))
 
-    # otherwise chunk the CSV rows
+    # otherwise, chunk the CSV rows
     lines = csv_text.split("\n")
     header, rows = lines[0], lines[1:]
     avg = max(1, count_tokens("\n".join(rows)) // len(rows))
