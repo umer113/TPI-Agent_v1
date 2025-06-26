@@ -282,55 +282,65 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
     def count_tokens(text: str) -> int:
         return len(encoding.encode(text))
 
-    # detect true “article” requests
+    # detect article requests
     is_article = any(kw in question.lower() for kw in (
         "write an article", "write a comprehensive article", "article"
     ))
 
-    # build our system_prompt
+    # build system prompt
     if is_article:
         system_prompt = (
-            "You are a professional writer and assistant. "
-            "Write a well-structured markdown article that includes:\n"
-            "1. An **Introduction** under heading `### Introduction`.\n"
-            "2. Multiple body sections under `###` or smaller headings.\n"
-            "3. A **Conclusion** under heading `### Conclusion`.\n"
-            "At the very end, write exactly one follow-up question as plain text "
-            "— for example: “Would you like to modify or expand this article?” "
-            "Do NOT prefix that question with any `#`, and do NOT add any other closing remarks."
+            "You are a professional writer. Produce a markdown article with:\n"
+            "- **Introduction** label in bold, followed by its paragraph.\n"
+            "- One or more **Body** sections, each starting with a bold label (e.g. **Background**, **Analysis**, etc.)\n"
+            "- **Conclusion** label in bold, followed by its paragraph.\n"
+            "At the very end, write exactly one follow-up question as plain text, e.g.:\n"
+            "Would you like to modify or expand this article?\n"
+            "Do NOT use any markdown headings (#) for that question or add extra closing remarks."
         )
     else:
         system_prompt = (
-            "You are ChatGPT, a helpful assistant. "
-            "Answer the user’s question directly and concisely, using the data if it’s relevant. "
-            "Be conversational, use simple formatting (lists, bold) if helpful, but do NOT produce a full article. "
-            "End with one brief follow-up question as plain text (no `#`)."
+            "You are ChatGPT, a helpful assistant. Answer the user’s question directly and concisely, "
+            "using the data if relevant. You may use simple markdown (lists, bold) but do NOT write an article. "
+            "End with one brief follow-up question as plain text (no #)."
         )
 
-    # pack up the CSV + user question
-    header = csv_text.split("\n", 1)[0]
-    body   = csv_text[len(header):].strip()
+    # prepare CSV + question
+    lines  = csv_text.split("\n")
+    header = lines[0]
+    rows   = lines[1:]
+    body   = "\n".join(rows)
     user_block = f"{header}\n{body}\n\nUser asked: {question}\n"
 
-    # token budgeting
+    # token budget
     MODEL_MAX = 16385
     HEADROOM  = 512
-    static_tokens = count_tokens(system_prompt) + count_tokens(user_block)
-    usable = MODEL_MAX - HEADROOM
+    static    = count_tokens(system_prompt) + count_tokens(header) + count_tokens(f"\nUser asked: {question}\n")
+    usable    = MODEL_MAX - HEADROOM - static
 
-    async def send_chat(prompt: str) -> str:
+    # if body fits, great
+    if count_tokens(body) <= usable:
+        final_prompt = user_block
+    else:
+        # truncate to first N rows that fit
+        avg_per_row = max(1, count_tokens("\n".join(rows)) // len(rows))
+        max_rows    = max(1, usable // avg_per_row)
+        truncated   = "\n".join(rows[:max_rows])
+        final_prompt = f"{header}\n{truncated}\n\nUser asked: {question}\n"
+
+    async def send_openai(prompt: str) -> str:
         client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         resp = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": prompt},
+                {"role": "system",  "content": system_prompt},
+                {"role": "user",    "content": prompt},
             ]
         )
         return resp.choices[0].message.content.strip()
 
     async def send_groq(prompt: str) -> str:
-        def run_sync():
+        def sync():
             client = Groq(api_key=os.getenv("GROQ_API_KEY"))
             resp = client.chat.completions.create(
                 model=model,
@@ -340,26 +350,13 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
                 ]
             )
             return resp.choices[0].message.content.strip()
-        return await asyncio.to_thread(run_sync)
+        return await asyncio.to_thread(sync)
 
-    # if it fits, send it directly
-    if static_tokens <= usable:
-        return await (send_groq(user_block) if use_groq else send_chat(user_block))
-
-    # otherwise chunk the CSV rows
-    lines = csv_text.split("\n")
-    header, rows = lines[0], lines[1:]
-    avg = max(1, count_tokens("\n".join(rows)) // len(rows))
-    per_chunk = max(1, (usable - count_tokens(system_prompt)) // avg)
-
-    chunks = [rows[i : i+per_chunk] for i in range(0, len(rows), per_chunk)]
-    parts = []
-    for chunk in chunks:
-        prompt = f"{header}\n" + "\n".join(chunk) + f"\n\nUser asked: {question}\n"
-        part = await (send_groq(prompt) if use_groq else send_chat(prompt))
-        parts.append(part)
-
-    return "\n\n".join(parts)
+    # send it!
+    if use_groq:
+        return await send_groq(final_prompt)
+    else:
+        return await send_openai(final_prompt)
 
 
 
