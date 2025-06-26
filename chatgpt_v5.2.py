@@ -283,14 +283,14 @@ async def ask_agent(csv_text: str, question: str, model: str, chat_history: list
         return len(encoding.encode(text))
 
     # 🎯 Enhanced ChatGPT-style behavior
-        system_prompt = (
-            "You are ChatGPT, a large language model trained by OpenAI. "
-            "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
-            "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
-            "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
-            "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
-            "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
-        )
+    system_prompt = (
+        "You are ChatGPT, a large language model trained by OpenAI. "
+        "You respond like ChatGPT on chat.openai.com — helpful, smart, and conversational. "
+        "You have access to a dataset (CSV) and must use it to answer user questions naturally. "
+        "When the user asks for an article, write a beautifully written, well-structured article with markdown formatting — including headings (##), subheadings (###), and paragraphs. "
+        "Make it sound human, vivid, and compelling. Don’t say 'based on the dataset'. "
+        "When answering normal questions, stay concise, use formatting where helpful, and be conversational. "
+    )
     history_context = "".join(
         f"{('User' if m['role'] == 'user' else 'Assistant')}: {m['content']}\n\n"
         for m in chat_history
