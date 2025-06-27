@@ -12,9 +12,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Initialize Selenium WebDriver
+from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
 import shutil
 
 def init_driver():
@@ -23,16 +23,17 @@ def init_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920x1080")
+    chrome_options.add_argument("--window-size=1920,1080")
 
-    # Use Chromium instead of Google Chrome
-    chrome_options.binary_location = shutil.which("chromium-browser") or shutil.which("chromium")
+    # Use Chromium path from the system
+    chrome_options.binary_location = shutil.which("chromium")
 
-    # Set path to installed chromedriver
+    # Use the correct system path to chromedriver
     service = Service(shutil.which("chromedriver"))
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
+
 
 # Extract emojis from text
 def extract_emojis(text):
