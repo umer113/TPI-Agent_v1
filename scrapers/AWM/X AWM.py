@@ -12,14 +12,25 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Initialize Selenium WebDriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+import shutil
+
 def init_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
-    service = Service(ChromeDriverManager().install())
+    chrome_options.add_argument("--window-size=1920x1080")
+
+    # Use Chromium instead of Google Chrome
+    chrome_options.binary_location = shutil.which("chromium-browser") or shutil.which("chromium")
+
+    # Set path to installed chromedriver
+    service = Service(shutil.which("chromedriver"))
+
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
