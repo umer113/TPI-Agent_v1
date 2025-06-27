@@ -32,7 +32,8 @@ FIRST_PAGE_URL = {
     "DVA Website Home": "https://clik.dva.gov.au/",
     "DVA Website Latest News": "https://www.dva.gov.au/about/news/latest-news",
     "articles":"https://www.awm.gov.au/articles",
-    "RMA":"http://www.rma.gov.au/"
+    "RMA":"http://www.rma.gov.au/",
+    "X-AWM": "https://x.com/awmemorial?lang=en"
 }
 
 TOP5_SELECTORS = {
@@ -47,6 +48,8 @@ TOP5_SELECTORS = {
 
     # DVA Veteran Affairs: listings are in <div class="col-md-6"> with <a class="card">
     "DVA Veteran Affairs":          "div.col-md-6 a.card",
+
+    "X-AWM" : None,
 
     # All the other DVA pages share the same “views” layout
     "DVA Repatriation Commission":  "div.views-row h2 a",
@@ -425,9 +428,11 @@ def main():
             "DVA Website About",
             "DVA Website Home",
             "DVA Website Latest News",
+            "X DVA"
         ],
         "AWM": [
             "articles",
+            "X AWM"
         ],
         "RMA": [
             "RMA",
